@@ -1,62 +1,36 @@
 import express from "express";
-
 const bankAccountRouter = express.Router();
-import { v4 as uuidv4 } from "uuid";
-import { InMemoryBankAccountRepository } from "../../adapters/repositories/InMemoryBankAccountRepository";
-import { InMemoryProfileRepository } from "../../adapters/repositories/InMemoryProfileRepository";
-import { BankAccount } from "../../core/entities/BankAccount";
+
+import {InMemoryBankAccountRepository} from "../../adapters/repositories/InMemoryBankAccountRepository";
+import {InMemoryProfileRepository} from "../../adapters/repositories/InMemoryProfileRepository";
+import {CreateBankAccount} from "../../core/usecases/bankAccount/CreateBankAccount";
+import {CheckIfProfileExistsById} from "../../core/usecases/profile/CheckIfProfileExistsById";
+import {CheckIfBankAccountExists} from "../../core/usecases/bankAccount/CheckIfBankAccountExists";
+import {RecapBankAccountByIban} from "../../core/usecases/bankAccount/RecapBankAccountByIban";
 
 const profileRepository = new InMemoryProfileRepository();
 const bankAccountRepository = new InMemoryBankAccountRepository();
+const createBankAccount = new CreateBankAccount(bankAccountRepository)
+const checkIfProfileExistsById = new CheckIfProfileExistsById(profileRepository)
+const checkIfBankAccountExists = new CheckIfBankAccountExists(bankAccountRepository)
+const recapBankAccountByIban = new RecapBankAccountByIban(bankAccountRepository,profileRepository)
 
 bankAccountRouter.post("/", (req, res) => {
-  const body = {
-    profileUuid: req.body.UUID,
-  };
+    const body = {
+        profileUuid: req.body.UUID,
+    };
 
-  const isProfileExist = profileRepository.getById(body.profileUuid);
+    checkIfProfileExistsById.execute(body, res);
 
-  if (!isProfileExist) {
-    return res.status(400).send({
-      message: "You need a profile to create a Bank Account",
-    });
-  }
-
-  const ibanNumber = uuidv4();
-  const bic = (Math.random() + 1).toString(36).substring(7);
-  const bankAccount = new BankAccount({
-    profileUuid: body.profileUuid,
-    iban: ibanNumber,
-    bic: bic,
-  });
-
-  bankAccountRepository.save(bankAccount);
-
-  return res.status(200).send(bankAccount.props);
+    createBankAccount.execute(body, res);
 });
 
 bankAccountRouter.get("/:iban", (req, res) => {
-  const isBankAccountExist = bankAccountRepository.getByIban(
-    req.params.iban
-  ).props;
 
+    checkIfBankAccountExists.execute(req, res);
 
-  if (!isBankAccountExist) {
-    return res.status(400).send({
-      message: "Bank Account doesn't exist",
-    });
-  }
+    recapBankAccountByIban.execute(req, res);
 
-  const profile = profileRepository.getById(
-    isBankAccountExist.profileUuid
-  ).props;
-
-  //const visualBankAccount = Object.assign({}, profile, isBankAccountExist);
-
-  return res.status(200).send({
-    profile: profile,
-    bank_account : isBankAccountExist
-  });
 });
 
-export { bankAccountRouter };
+export {bankAccountRouter};

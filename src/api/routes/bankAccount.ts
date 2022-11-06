@@ -9,7 +9,7 @@ import { BankAccount } from "../../core/entities/BankAccount";
 const profileRepository = new InMemoryProfileRepository();
 const bankAccountRepository = new InMemoryBankAccountRepository();
 
-bankAccountRouter.post("/signup", (req, res) => {
+bankAccountRouter.post("/", (req, res) => {
   const body = {
     profileUuid: req.body.UUID,
   };
@@ -35,12 +35,11 @@ bankAccountRouter.post("/signup", (req, res) => {
   return res.status(200).send(bankAccount.props);
 });
 
-bankAccountRouter.post("/signin", (req, res) => {
-  const body = {
-    iban: req.body.iban,
-  };
+bankAccountRouter.get("/:iban", (req, res) => {
+  const isBankAccountExist = bankAccountRepository.getByIban(
+    req.params.iban
+  ).props;
 
-  const isBankAccountExist = bankAccountRepository.getByIban(body.iban).props;
 
   if (!isBankAccountExist) {
     return res.status(400).send({
@@ -52,9 +51,12 @@ bankAccountRouter.post("/signin", (req, res) => {
     isBankAccountExist.profileUuid
   ).props;
 
-  const visualBankAccount = Object.assign({}, profile, isBankAccountExist);
+  //const visualBankAccount = Object.assign({}, profile, isBankAccountExist);
 
-  return res.status(200).send(visualBankAccount);
+  return res.status(200).send({
+    profile: profile,
+    bank_account : isBankAccountExist
+  });
 });
 
 export { bankAccountRouter };
